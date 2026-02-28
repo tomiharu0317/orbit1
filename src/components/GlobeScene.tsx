@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 
 interface SatPoint {
   lat: number
@@ -9,22 +9,23 @@ interface SatPoint {
   name: string
 }
 
-// Use TLE text format — JSON format doesn't include TLE lines
 const TLE_URLS = [
   'https://celestrak.org/NORAD/elements/gp.php?GROUP=visual&FORMAT=tle',
   'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle',
 ]
 
-function parseTLE(text: string): { name: string; line1: string; line2: string }[] {
-  const lines = text.trim().split('\n').map((l) => l.trim()).filter(Boolean)
+function parseTLE(
+  text: string
+): { name: string; line1: string; line2: string }[] {
+  const lines = text
+    .trim()
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
   const result: { name: string; line1: string; line2: string }[] = []
   for (let i = 0; i + 2 < lines.length; i += 3) {
     if (lines[i + 1]?.startsWith('1 ') && lines[i + 2]?.startsWith('2 ')) {
-      result.push({
-        name: lines[i],
-        line1: lines[i + 1],
-        line2: lines[i + 2],
-      })
+      result.push({ name: lines[i], line1: lines[i + 1], line2: lines[i + 2] })
     }
   }
   return result
@@ -35,8 +36,7 @@ function generateOrbitPath(inclination: number): number[][] {
   const incRad = (inclination * Math.PI) / 180
   for (let i = 0; i <= 360; i += 1) {
     const rad = (i * Math.PI) / 180
-    const lat =
-      Math.asin(Math.sin(rad) * Math.sin(incRad)) * (180 / Math.PI)
+    const lat = Math.asin(Math.sin(rad) * Math.sin(incRad)) * (180 / Math.PI)
     const lng =
       Math.atan2(Math.sin(rad) * Math.cos(incRad), Math.cos(rad)) *
       (180 / Math.PI)
@@ -50,20 +50,28 @@ export default function GlobeScene({
 }: {
   onSatCount?: (n: number) => void
 }) {
+  // Globe container ref — globe.gl takes full control of this element's DOM
   const containerRef = useRef<HTMLDivElement>(null)
   const globeRef = useRef<unknown>(null)
-  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const stableOnSatCount = useCallback(
+    (n: number) => onSatCount?.(n),
+    [onSatCount]
+  )
 
   useEffect(() => {
-    if (!containerRef.current || globeRef.current) return
+    let cancelled = false
 
     const init = async () => {
-      const [{ default: Globe }, satellite] = await Promise.all([
+      const [globeModule, satellite] = await Promise.all([
         import('globe.gl'),
         import('satellite.js'),
       ])
 
-      // Fetch real satellite TLE data
+      if (cancelled || !containerRef.current) return
+
+      // Fetch satellite TLE data
       let positions: SatPoint[] = []
       try {
         const responses = await Promise.all(
@@ -105,36 +113,35 @@ export default function GlobeScene({
         console.warn('Satellite data fetch failed:', e)
       }
 
-      onSatCount?.(positions.length)
+      if (cancelled || !containerRef.current) return
 
-      // Orbit1 planned SSO orbit (97.4° inclination, ~500km)
+      stableOnSatCount(positions.length)
+
       const orbitPoints = generateOrbitPath(97.4)
+      const el = containerRef.current
 
-      const el = containerRef.current!
-      // globe.gl is a Kapsule factory: Globe()(element), not new Globe(element)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const globe = (Globe as any)()(el)
+      // globe.gl uses Kapsule v1.16+ class mode: must use `new` to pass element
+      const Globe = globeModule.default
+      const globe = new Globe(el)
         .width(el.clientWidth)
         .height(el.clientHeight)
         .globeImageUrl(
-          '//unpkg.com/three-globe/example/img/earth-dark.jpg'
+          'https://unpkg.com/three-globe/example/img/earth-dark.jpg'
         )
         .bumpImageUrl(
-          '//unpkg.com/three-globe/example/img/earth-topology.png'
+          'https://unpkg.com/three-globe/example/img/earth-topology.png'
         )
         .backgroundImageUrl(
-          '//unpkg.com/three-globe/example/img/night-sky.png'
+          'https://unpkg.com/three-globe/example/img/night-sky.png'
         )
         .showAtmosphere(true)
         .atmosphereColor('lightskyblue')
         .atmosphereAltitude(0.18)
-        // Real satellites
         .pointsData(positions)
         .pointColor(() => 'rgba(0, 255, 136, 0.7)')
         .pointAltitude('alt')
         .pointRadius(0.15)
         .pointLabel('name')
-        // Orbit1 planned path
         .pathsData([{ points: orbitPoints }])
         .pathPoints('points')
         .pathPointLat((p: number[]) => p[0])
@@ -146,21 +153,36 @@ export default function GlobeScene({
         .pathDashGap(0.1)
         .pathDashAnimateTime(4000)
 
-      // Camera
-      globe.controls().autoRotate = true
-      globe.controls().autoRotateSpeed = 0.35
-      globe.controls().enableZoom = true
       globe.pointOfView({ lat: 30, lng: 140, altitude: 2.5 })
 
-      globeRef.current = globe
-      setLoading(false)
+      // controls() may not be available until after first render frame
+      const setupControls = () => {
+        const controls = globe.controls?.()
+        if (controls) {
+          controls.autoRotate = true
+          controls.autoRotateSpeed = 0.35
+          controls.enableZoom = true
+        } else {
+          requestAnimationFrame(setupControls)
+        }
+      }
+      requestAnimationFrame(setupControls)
+
+      if (!cancelled) {
+        globeRef.current = globe
+      }
     }
 
-    init()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    init().catch((e) => {
+      if (!cancelled) setError(String(e))
+    })
 
-  // Resize handler
+    return () => {
+      cancelled = true
+    }
+  }, [stableOnSatCount])
+
+  // Resize
   useEffect(() => {
     const onResize = () => {
       const globe = globeRef.current as any
@@ -174,14 +196,15 @@ export default function GlobeScene({
   }, [])
 
   return (
-    <div ref={containerRef} className="absolute inset-0">
-      {loading && (
-        <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
-          <div className="text-zinc-500 font-mono text-sm">
-            Loading satellite data...
-          </div>
+    <>
+      {/* Globe container — no React children, globe.gl owns this DOM */}
+      <div ref={containerRef} className="absolute inset-0" />
+      {/* Error overlay — sibling, not child of globe container */}
+      {error && (
+        <div className="absolute bottom-4 left-4 text-red-500 font-mono text-xs z-20 max-w-md break-all">
+          {error}
         </div>
       )}
-    </div>
+    </>
   )
 }

@@ -1,0 +1,92 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - generic:
+        - heading "ORBIT1" [level=1]
+        - paragraph: Going to orbit. Open source. 2026.
+        - paragraph: 民間から宇宙へ。全過程を公開する。
+      - generic [ref=e4]: ↓
+    - generic [ref=e6]:
+      - heading "Mission" [level=2] [ref=e7]
+      - generic [ref=e8]:
+        - generic [ref=e9]:
+          - heading "WHAT" [level=3] [ref=e10]
+          - paragraph [ref=e11]: 1U CubeSat technology demonstration mission. Proving that a small team with software DNA can reach orbit.
+        - generic [ref=e12]:
+          - heading "WHEN" [level=3] [ref=e13]
+          - paragraph [ref=e14]: "Target launch: December 2026. From zero to orbit in under 10 months."
+        - generic [ref=e15]:
+          - heading "HOW" [level=3] [ref=e16]
+          - paragraph [ref=e17]: Open source from Day 0. Every decision, every milestone, every failure — public.
+        - generic [ref=e18]:
+          - heading "WHY" [level=3] [ref=e19]
+          - paragraph [ref=e20]: To prove the barrier to space is lower than anyone thinks. If we can do it, so can you.
+    - generic [ref=e22]:
+      - heading "Timeline" [level=2] [ref=e23]
+      - generic [ref=e26]:
+        - generic [ref=e27]:
+          - generic [ref=e29]:
+            - text: DAY 0
+            - generic [ref=e30]: — March 2026
+          - generic [ref=e31]: Public declaration
+          - generic [ref=e32]: Open-source repo. Real-time satellite tracking. The mission starts now.
+        - generic [ref=e33]:
+          - generic [ref=e35]:
+            - text: PHASE 1
+            - generic [ref=e36]: — Mar — Apr 2026
+          - generic [ref=e37]: Mission definition
+          - generic [ref=e38]: Payload spec. Orbit selection. Regulatory filing with Japanese authorities.
+        - generic [ref=e39]:
+          - generic [ref=e41]:
+            - text: PHASE 2
+            - generic [ref=e42]: — Apr — May 2026
+          - generic [ref=e43]: Satellite procurement
+          - generic [ref=e44]: CubeSat bus selection. Component procurement. Ground station setup.
+        - generic [ref=e45]:
+          - generic [ref=e47]:
+            - text: PHASE 3
+            - generic [ref=e48]: — May — Sep 2026
+          - generic [ref=e49]: Build & test
+          - generic [ref=e50]: Assembly. Environmental testing. Flight software development.
+        - generic [ref=e51]:
+          - generic [ref=e53]:
+            - text: PHASE 4
+            - generic [ref=e54]: — Sep — Oct 2026
+          - generic [ref=e55]: Launch integration
+          - generic [ref=e56]: Rideshare slot. Vehicle integration. Final review.
+        - generic [ref=e57]:
+          - generic [ref=e59]:
+            - text: PHASE 5
+            - generic [ref=e60]: — Nov — Dec 2026
+          - generic [ref=e61]: LAUNCH
+          - generic [ref=e62]: Orbit insertion. First contact. Mission operations begin.
+    - generic [ref=e64]:
+      - heading "Technical specs" [level=2] [ref=e65]
+      - generic [ref=e66]:
+        - generic [ref=e67]:
+          - generic [ref=e68]: FORM FACTOR
+          - generic [ref=e69]: 1U CubeSat
+        - generic [ref=e70]:
+          - generic [ref=e71]: SIZE
+          - generic [ref=e72]: 10 × 10 × 10 cm
+        - generic [ref=e73]:
+          - generic [ref=e74]: MASS
+          - generic [ref=e75]: < 1.33 kg
+        - generic [ref=e76]:
+          - generic [ref=e77]: ORBIT
+          - generic [ref=e78]: LEO ~500 km SSO
+        - generic [ref=e79]:
+          - generic [ref=e80]: INCLINATION
+          - generic [ref=e81]: 97.4°
+        - generic [ref=e82]:
+          - generic [ref=e83]: MISSION LIFE
+          - generic [ref=e84]: TBD
+    - generic [ref=e85]:
+      - heading "Follow the mission." [level=2] [ref=e86]
+      - paragraph [ref=e87]: Star the repo. Watch the progress. Join the journey.
+      - link "GitHub →" [ref=e88] [cursor=pointer]:
+        - /url: https://github.com/tomiharu0317/orbit1
+    - paragraph [ref=e90]: "ORBIT1 — Day 0: March 1, 2026"
+  - button "Open Next.js Dev Tools" [ref=e96] [cursor=pointer]:
+    - img [ref=e97]
+  - alert [ref=e100]
