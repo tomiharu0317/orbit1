@@ -9,8 +9,26 @@ interface SatPoint {
   name: string
 }
 
-const CELESTRAK_URL =
-  'https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=json'
+// Use TLE text format — JSON format doesn't include TLE lines
+const TLE_URLS = [
+  'https://celestrak.org/NORAD/elements/gp.php?GROUP=visual&FORMAT=tle',
+  'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle',
+]
+
+function parseTLE(text: string): { name: string; line1: string; line2: string }[] {
+  const lines = text.trim().split('\n').map((l) => l.trim()).filter(Boolean)
+  const result: { name: string; line1: string; line2: string }[] = []
+  for (let i = 0; i + 2 < lines.length; i += 3) {
+    if (lines[i + 1]?.startsWith('1 ') && lines[i + 2]?.startsWith('2 ')) {
+      result.push({
+        name: lines[i],
+        line1: lines[i + 1],
+        line2: lines[i + 2],
+      })
+    }
+  }
+  return result
+}
 
 function generateOrbitPath(inclination: number): number[][] {
   const points: number[][] = []
@@ -33,7 +51,7 @@ export default function GlobeScene({
   onSatCount?: (n: number) => void
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const globeRef = useRef<ReturnType<typeof Object> | null>(null)
+  const globeRef = useRef<unknown>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -45,22 +63,20 @@ export default function GlobeScene({
         import('satellite.js'),
       ])
 
-      // Fetch real satellite data
+      // Fetch real satellite TLE data
       let positions: SatPoint[] = []
       try {
-        const resp = await fetch(CELESTRAK_URL)
-        const data = await resp.json()
+        const responses = await Promise.all(
+          TLE_URLS.map((url) => fetch(url).then((r) => r.text()))
+        )
+        const allTLEs = responses.flatMap(parseTLE)
         const now = new Date()
         const gmst = satellite.gstime(now)
 
-        positions = data
-          .slice(0, 1200)
-          .map((item: Record<string, string>) => {
+        positions = allTLEs
+          .map((tle) => {
             try {
-              const satrec = satellite.twoline2satrec(
-                item.TLE_LINE1,
-                item.TLE_LINE2
-              )
+              const satrec = satellite.twoline2satrec(tle.line1, tle.line2)
               const result = satellite.propagate(satrec, now)
               if (
                 !result ||
@@ -68,13 +84,17 @@ export default function GlobeScene({
                 typeof result.position === 'boolean'
               )
                 return null
-              const pos = result.position as { x: number; y: number; z: number }
+              const pos = result.position as {
+                x: number
+                y: number
+                z: number
+              }
               const geo = satellite.eciToGeodetic(pos, gmst)
               return {
                 lat: satellite.degreesLat(geo.latitude),
                 lng: satellite.degreesLong(geo.longitude),
                 alt: (geo.height / 6371) * 4,
-                name: item.OBJECT_NAME,
+                name: tle.name,
               }
             } catch {
               return null
@@ -90,9 +110,10 @@ export default function GlobeScene({
       // Orbit1 planned SSO orbit (97.4° inclination, ~500km)
       const orbitPoints = generateOrbitPath(97.4)
 
-      const globe = new Globe(containerRef.current!)
-        .width(containerRef.current!.clientWidth)
-        .height(containerRef.current!.clientHeight)
+      const el = containerRef.current!
+      const globe = new Globe(el)
+        .width(el.clientWidth)
+        .height(el.clientHeight)
         .globeImageUrl(
           '//unpkg.com/three-globe/example/img/earth-dark.jpg'
         )
@@ -109,7 +130,7 @@ export default function GlobeScene({
         .pointsData(positions)
         .pointColor(() => 'rgba(0, 255, 136, 0.7)')
         .pointAltitude('alt')
-        .pointRadius(0.12)
+        .pointRadius(0.15)
         .pointLabel('name')
         // Orbit1 planned path
         .pathsData([{ points: orbitPoints }])
@@ -134,15 +155,16 @@ export default function GlobeScene({
     }
 
     init()
-  }, [onSatCount])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  // Resize
+  // Resize handler
   useEffect(() => {
     const onResize = () => {
-      if (globeRef.current && containerRef.current) {
-        ;(globeRef.current as any)
-          .width(containerRef.current.clientWidth)
-          .height(containerRef.current.clientHeight)
+      const globe = globeRef.current as any
+      const el = containerRef.current
+      if (globe && el) {
+        globe.width(el.clientWidth).height(el.clientHeight)
       }
     }
     window.addEventListener('resize', onResize)
@@ -150,15 +172,14 @@ export default function GlobeScene({
   }, [])
 
   return (
-    <>
-      <div ref={containerRef} className="globe-container w-full h-full" />
+    <div ref={containerRef} className="absolute inset-0">
       {loading && (
-        <div className="absolute inset-0 flex items-center justify-center z-20">
+        <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
           <div className="text-zinc-500 font-mono text-sm">
             Loading satellite data...
           </div>
         </div>
       )}
-    </>
+    </div>
   )
 }
