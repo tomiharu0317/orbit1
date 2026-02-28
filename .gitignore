@@ -2,4 +2,6 @@ node_modules/
 .next/
 *.tsbuildinfo
 next-env.d.ts
-.vercel
+.vercel/
+.playwright-cli/
+*.png
