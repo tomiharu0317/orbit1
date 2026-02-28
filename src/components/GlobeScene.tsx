@@ -111,7 +111,9 @@ export default function GlobeScene({
       const orbitPoints = generateOrbitPath(97.4)
 
       const el = containerRef.current!
-      const globe = new Globe(el)
+      // globe.gl is a Kapsule factory: Globe()(element), not new Globe(element)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const globe = (Globe as any)()(el)
         .width(el.clientWidth)
         .height(el.clientHeight)
         .globeImageUrl(
